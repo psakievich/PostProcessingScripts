@@ -1,5 +1,5 @@
 '''
-Project data from an exodus grid to a vtkStructuredGrid
+Helper functions for creating some basic vtkGrids
 
 @author Phil Sakievich
 @email psakiev@sandia.gov

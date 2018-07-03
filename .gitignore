@@ -3,3 +3,8 @@ LD_LIBRARY_PATH
 PythonPath
 *.txt
 *.dat
+*.vtk
+*.vts
+*.vtr
+*.e
+*.g
