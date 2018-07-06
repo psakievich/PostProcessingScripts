@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Resample from exodus to vtkStructuredGrid
+Example script for resampling from exodus to vtkStructuredGrid
 and perform averaging operations in cylindrical coordinates
 
 @author Phil Sakievich
@@ -10,27 +10,21 @@ and perform averaging operations in cylindrical coordinates
 
 import vtk
 import CreateGrids as cg
-#import MrRealVtk as mrv
-#from vtk.numpy_interface import dataset_adapter as dsa
+from vtk.numpy_interface import dataset_adapter as dsa
+import numpy as np
 
-#class ResampleData:
-#    '''
-#    This class manages the interface for resampling datasets
-#    with vtkResampleWithDataset
-#    '''
-#    def __init__():
-#    def SetResampleGrid(self, resampleGrid):
-#        '''
-#        Supply a grid for which you wish to resample
-#        '''
-#    def GetTimesteps():
-#    def SetTimestep();
-        
+'''
+TODO: Projection to cylindrical coordinates
+TODO: Time averaging
+TODO: Fluctuations
+TODO: Energy Terms
+TODO: Average output on a plane or whole domain
+'''
 
 if __name__ == "__main__":
     radius = 0.5
     height = 1.0
-    NX = (20,10,10)
+    NX = (50,20,20)
     base = (0,0,0)
     
     strucGrid = cg.CreateCylindricalGrid(base, radius, height,NX)
@@ -46,15 +40,43 @@ if __name__ == "__main__":
     resample = vtk.vtkResampleWithDataSet()
     resample.SetInputData(strucGrid)
     resample.SetSourceConnection(eReader.GetOutputPort())
+    resample.UpdateTimeStep(tSteps[-1])
+    resample.Update()
+    data = resample.GetOutput()
+    data_math = dsa.WrapDataObject(data)
     
-    writer = vtk.vtkXMLStructuredGridWriter()
+    # Add mean
+    keys_org = data_math.PointData.keys()
+    index = 0
+    for key in keys_org:
+        key_new = "mean_"+key
+        meanArray = data_math.PointData.GetArray(index).copy()
+        for i in range(NX[1]*NX[2]):
+            # loop over r-z locations and write the mean
+            # data is contiguous in theta direction
+            if (len(meanArray.shape)==1):
+                meanArray[i*NX[0]:(i+1)*NX[0]]=np.mean(\
+                          data_math.PointData.GetArray(index)[i*NX[0]:(i+1)*NX[0]]\
+                          )
+            elif (len(meanArray.shape)==2):
+                for j in range(meanArray.shape[-1]):
+                    # right now this is only velocity so let's transform these
+                    meanArray.T[j,i*NX[0]:(i+1)*NX[0]]=np.mean(\
+                                data_math.PointData.GetArray(index).T[j,i*NX[0]:(i+1)*NX[0]]\
+                                )
+            else:
+                print "Skipping array "+key+" because it has more than 2 vtk indicies"
+        data_math.PointData.append(meanArray,key_new)
+        index+=1
+        print(index,key,key_new)
+    
+    
     
     # write data for each time step
-    for i in range(len(tSteps)):
-        resample.UpdateTimeStep(tSteps[i])
-        writer.SetInputData(resample.GetOutput())
-        writer.SetFileName("test_{istep}.vts".format(istep=i))
-        writer.Write()
+    writer = vtk.vtkXMLStructuredGridWriter()
+    writer.SetInputData(data)
+    writer.SetFileName("mean.vts")
+    writer.Write()
     
     
     
