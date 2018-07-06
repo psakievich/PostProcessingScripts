@@ -1,5 +1,5 @@
 '''
-Project data from an exodus grid to a vtkStructuredGrid
+Helper functions for creating some basic vtkGrids
 
 @author Phil Sakievich
 @email psakiev@sandia.gov
@@ -19,6 +19,9 @@ def CreateCylindricalGrid(bottomCenter, radius, height, nPoints):
     radius - Radius of grid
     height - height of cylinder
     nPoints - tuple length 3 with sample rate for each dimension
+    
+  TODO: add suport for arbitrary orientation of the cylinder
+  TODO: add to a class that has a helper function for getting angle
   '''
   # Set up points
   points = vtk.vtkPoints()
