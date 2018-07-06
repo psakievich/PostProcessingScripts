@@ -1,10 +1,18 @@
 '''
-This shows the bug for writing a structured grid in parallel
-when the writer has a ResampleToDataset filter as a source
-The resulting pvts file appears to have some corruption that
-generates a segfault when it is read.
+Example of how to create programable source in paraview
+and resample your dataset.
+In this case the key feature is going from unstructured
+to a structured grid format for post-processing
 
-I was unable to find any glaring errors via visual inspection of the xml files
+Additional filters can be applied on top of this in paraview
+if desired however for point by point analysis it might be 
+simpler to just work in pure vtk.  
+
+See VTKBased directory for examples on how to do this.
+
+@author Phil Sakievich
+@email psakiev@sandia.gov
+@genesisdate 7/6/2018
 '''
 
 from paraview.simple import *
@@ -36,13 +44,6 @@ grid = ProgrammableSource( \
     )
 viewGrid=Show(grid,renderView)
 viewGrid.SetRepresentationType("Surface With Edges")
-# write the programable source
-#writer1 = XMLPStructuredGridWriter(Input=grid)
-#writer1.FileName = "baseGrid.pvts"
-#writer1.UpdatePipeline()
-# read this file with no segfault issues
-#reader1 = XMLPartitionedStructuredGridReader(FileName = "baseGrid.pvts")
-#reader1.UpdatePipeline()
 
 # unstructured data set
 exodusFilename = r"/gpfs1/psakiev/PVResampleDatasetBug/exodus.e"
@@ -59,12 +60,3 @@ resample = ResampleWithDataset(\
 Hide(grid)
 resampleView=Show(resample,renderView)
 resampleView.SetRepresentationType("Surface")
-# Write the data
-#writer2 = XMLPStructuredGridWriter(Input=resample)
-#writer2.FileName = "resample.pvts"
-#writer2.UpdatePipeline() 
-#wait = input("Type a number to see the seg fault occur")
-# Try to read the data
-#reader2 = XMLPartitionedStructuredGridReader(FileName="resample.pvts")
-# Seg fault occurs when we try to access any member of the reader object
-#reader2.UpdatePipeline()

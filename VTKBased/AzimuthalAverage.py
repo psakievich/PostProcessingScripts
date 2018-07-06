@@ -49,8 +49,10 @@ if __name__ == "__main__":
     keys_org = data_math.PointData.keys()
     index = 0
     for key in keys_org:
-        key_new = "mean_"+key
+        key_mean = "mean_"+key
+        key_fluc = "fluc_"+key
         meanArray = data_math.PointData.GetArray(index).copy()
+        flucArray = meanArray.copy()
         for i in range(NX[1]*NX[2]):
             # loop over r-z locations and write the mean
             # data is contiguous in theta direction
@@ -58,17 +60,19 @@ if __name__ == "__main__":
                 meanArray[i*NX[0]:(i+1)*NX[0]]=np.mean(\
                           data_math.PointData.GetArray(index)[i*NX[0]:(i+1)*NX[0]]\
                           )
+                flucArray[i*NX[0]:(i+1)*NX[0]]-=meanArray[i*NX[0]:(i+1)*NX[0]]
             elif (len(meanArray.shape)==2):
                 for j in range(meanArray.shape[-1]):
-                    # right now this is only velocity so let's transform these
                     meanArray.T[j,i*NX[0]:(i+1)*NX[0]]=np.mean(\
                                 data_math.PointData.GetArray(index).T[j,i*NX[0]:(i+1)*NX[0]]\
                                 )
+                    flucArray.T[j,i*NX[0]:(i+1)*NX[0]]-=meanArray.T[j,i*NX[0]:(i+1)*NX[0]]
             else:
                 print "Skipping array "+key+" because it has more than 2 vtk indicies"
-        data_math.PointData.append(meanArray,key_new)
+        data_math.PointData.append(meanArray,key_mean)
+        data_math.PointData.append(flucArray,key_fluc)
         index+=1
-        print(index,key,key_new)
+        print(index,key,key_mean,key_fluc)
     
     
     
