@@ -75,7 +75,7 @@ if __name__ == '__main__':
 
   print "Starting program"
 
-  fileIn = "/gpfs1/spdomin/hexTetPaper/channelFlow/postProcess/results/wale_wedge6.e"
+  fileIn = "/gpfs1/spdomin/channelWithRe/wale_wedge6.e-s004"
   fileOut = "profile.dat"
   nPoints = 100
   rho = 1.0
@@ -100,19 +100,19 @@ if __name__ == '__main__':
   PostProcessor.SetSliceLocation(origins[0],normal)
 
   data = PostProcessor.FetchData()
-  header_values = data.keys()
+  header_values = sorted(data.keys())
   my_header_str ="position, y+"
 
   for name in header_values:
     my_header_str += ", " + name
 
-  results = np.array(data.values(),ndmin=2)
+  results = np.array([data.get(key) for key in header_values],ndmin=2)
   print "Profile {num} processed.".format(num=0)
 
   for i in range(1,nPoints):
     PostProcessor.SetSliceLocation(origins[i],normal)
     data = PostProcessor.FetchData()
-    temp = np.array(data.values(),ndmin=2)
+    temp = np.array([data.get(key) for key in header_values] ,ndmin=2)
     results = np.append(results,temp,axis=0)
     print "Profile {num} processed.".format(num=i)
 
