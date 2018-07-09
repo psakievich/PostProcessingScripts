@@ -104,20 +104,20 @@ if __name__ == '__main__':
   PostProcessor.SetSliceLocation(origins[0],normal)
 
   data = PostProcessor.FetchData()
-  header_values = data.keys()
+  header_values = sorted(data.keys())
   my_header_str ="position, y+"
 
   for name in header_values:
     my_header_str += ", " + name
 
   # Bottom profile saves vs wall normal distance
-  results = np.array(data.values(),ndmin=2)
+  results = np.array([data.get(key) for key in header_values],ndmin=2)
   print "Profile {num} processed.".format(num=0)
 
   for i in range(1,nPoints):
     PostProcessor.SetSliceLocation(origins[i],normal)
     data = PostProcessor.FetchData()
-    temp = np.array(data.values(),ndmin=2)
+    temp = np.array([data.get(key) for key in header_values] ,ndmin=2)
     results = np.append(results,temp,axis=0)
     print "Profile {num} processed.".format(num=i)
 
@@ -128,11 +128,12 @@ if __name__ == '__main__':
   # Top profile saved vs wall normal distance
   PostProcessor.SetSliceLocation(origins[nPoints],normal)
   data = PostProcessor.FetchData()
-  results = np.array(data.values(),ndmin=2)
+  results = np.array([data.get(key) for key in header_values],ndmin=2)
+  print "Profile {num} processed.".format(num=nPoints)
   for i in range(nPoints+1,2*nPoints):
     PostProcessor.SetSliceLocation(origins[i],normal)
     data = PostProcessor.FetchData()
-    temp = np.array(data.values(),ndmin=2)
+    temp = np.array([data.get(key) for key in header_values] ,ndmin=2)
     results = np.append(results,temp,axis=0)
     print "Profile {num} processed.".format(num=i)
 
