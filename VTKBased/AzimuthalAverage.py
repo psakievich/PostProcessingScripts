@@ -10,8 +10,10 @@ and perform averaging operations in cylindrical coordinates
 
 import vtk
 import CreateGrids as cg
+import CreateGrids_1 as cg1
 from vtk.numpy_interface import dataset_adapter as dsa
 import numpy as np
+reload(cg1)
 
 '''
 TODO: Projection to cylindrical coordinates
@@ -24,10 +26,9 @@ TODO: Average output on a plane or whole domain
 if __name__ == "__main__":
     radius = 0.5
     height = 1.0
-    NX = (50,20,20)
-    base = (0,0,0)
-    
-    strucGrid = cg.CreateCylindricalGrid(base, radius, height,NX)
+    NX = (64,20,20)
+
+    strucGrid = cg1.CreateCylindricalGrid(radius, height, NX)
     exodusFile = r"/gpfs1/psakiev/PVResampleDatasetBug/exodus.e"
     
     eReader = vtk.vtkExodusIIReader()
