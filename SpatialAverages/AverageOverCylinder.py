@@ -8,15 +8,14 @@ user defined resolution
 '''
 
 from paraview.simple import *
-import sys,os
 
-def ResampleGrid(radius, height, bottomCenter, normal, resolution, pythonPath):
+def ResampleGrid(radius, height, resolution, pythonPath):
   # create the programmable source
   grid = ProgrammableSource( \
     Script = \
       "import CreateGrids as cg\n" + \
       "output.ShallowCopy(cg.CreateCylindricalGrid({bc},{nrml},{r},{h},{np}))".format(\
-      bc = bottomCenter, nrml=normal, r=radius, h=height, np=nPoints), \
+      r=radius, h=height, np=resolution), \
     ScriptRequestInformation = \
       "executive = self.GetExecutive()\n" +\
       "outInfo = executive.GetOutputInformation(0)\n" +\
