@@ -66,13 +66,13 @@ def CreateCylindricalGrid(radius, height, nPoints, rotation = (0,0,0), \
   for i in range(3):
       x_c[i]=x_c[i].flatten()
   
-  # Assign points
+  # Assign points with transaltion to cartesian coords
   for n in range(totalNumberOfPoints):
     x = x_c[iR][n]*np.cos(x_c[iT][n])
     y = x_c[iR][n]*np.sin(x_c[iT][n])
     z = x_c[iZ][n]
     points.InsertNextPoint(x,y,z)
-    #print np.sqrt(x**2+y**2),x_c[iT][n],z
+
   # Create grid
   grid = vtk.vtkStructuredGrid()
   # flip ordering back to make sure dimensions of structured grid are correct
