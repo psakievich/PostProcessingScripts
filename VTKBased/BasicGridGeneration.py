@@ -9,7 +9,7 @@ Helper functions for creating some basic vtkGrids
 import vtk
 import numpy as np
 
-def CreateCylindricalGrid(bottomCenter, radius, height, nPoints):
+def CreateCylindricalGrid(radius, height, nPoints):
   '''
   Create a vtkStructured grid of a cylinder
   
@@ -37,12 +37,12 @@ def CreateCylindricalGrid(bottomCenter, radius, height, nPoints):
      height/float(nPoints[2]-1)]
   # Assign points with theta with theta as the contiguous direction
   for nZ in range(nPoints[2]):
-    z = bottomCenter[2]+dX[2]*nZ
+    z = dX[2]*nZ
     for nR in range(nPoints[1]):
       for nT in range(nPoints[0]):
         theta = nT*dX[0]
-        x = bottomCenter[0] + nR*dX[1]*np.cos(theta)
-        y = bottomCenter[1] + nR*dX[1]*np.sin(theta)
+        x = nR*dX[1]*np.cos(theta)
+        y = nR*dX[1]*np.sin(theta)
         points.InsertNextPoint(x,y,z)
   # Create grid and return it
   grid = vtk.vtkStructuredGrid()
