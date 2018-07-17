@@ -26,7 +26,7 @@ class ResampleProcessing:
         '''
         self.eReader = vtk.vtkExodusIIReader()
         self.eReader.SetFileName(exodusFileName)
-        self.grid = structuredGrid 
+        self.grid = structuredGrid
     def Initialize(self,variableList=None):
         '''
         Read the exodus data and resample the dataset onto the specified grid
@@ -78,7 +78,7 @@ class ResampleProcessing:
     def InsertField(self,array,name):
         '''
         Add a new field with the specified name
-        Note that the dimensions of the array must match the arrays in 
+        Note that the dimensions of the array must match the arrays in
         the underlying dataset
         '''
         self.data_np.PointData.append(array,name)
@@ -94,7 +94,7 @@ class ResampleProcessing:
     def SpatialAverage(self,array, direction, weights=None):
         '''
         Average over the dimension specified by direction.
-        direction should be in fortran ordering in terms of 
+        direction should be in fortran ordering in terms of
         the structured grid index.
         Weights can be specified if the grid spacing is not
         uniform
@@ -154,35 +154,54 @@ class ResampleProcessing:
         elif outPlaneDirection ==2:
             newShape.append(dims[1]*dims[0])
             return array_new[:,:,index].reshape(newShape[::-1])
-        
+
 if __name__ == "__main__":
+    # set up sampling grid
     radius = 0.5
     height = 1.0
-    NX = (64,20,20)
-
+    NX = (64,64,64)
     strucGrid = cg.CreateCylindricalGrid(radius, height, NX)
-    exodusFile = r"/gpfs1/psakiev/PVResampleDatasetBug/exodus.e"
     
+    # perform resampling
+    exodusFile = r"/gpfs1/psakiev/PVResampleDatasetBug/exodus.e"
     d = ResampleProcessing(exodusFile,strucGrid)
     d.Initialize()
     tStep=d.GetTimeSteps()
     d.SetTimeStep(tStep[-1])
     keys = d.GetKeys()
+    
+    # note that we should also do time averaging, but this is an example
     velMean = d.SpatialAverage(d.GetField("velocity_"),0)
     d.InsertField(velMean,"velMean")
     velFluc = d.GetField("velocity_")-velMean
     d.InsertField(velFluc,"velFluc")
-    d.WriteResultGrid("mean2.vts")
     
+    # compute a turbulence quantity
+    dUdx = d.Gradient("velMean")
+    uu = d.SpatialAverage(velFluc[:,0]**2,0)
+    vv = d.SpatialAverage(velFluc[:,1]**2,0)
+    ww = d.SpatialAverage(velFluc[:,2]**2,0)
+    uv = d.SpatialAverage(velFluc[:,0]*velFluc[:,1],0)
+    uw = d.SpatialAverage(velFluc[:,0]*velFluc[:,2],0)
+    vw = d.SpatialAverage(velFluc[:,1]*velFluc[:,2],0)
+    production = dUdx[:,0,0]*uu\
+               +(dUdx[:,0,1] + dUdx[:,1,0])*uv\
+               +(dUdx[:,0,2] + dUdx[:,2,0])*uw \
+               +dUdx[:,1,1]*vv \
+               +(dUdx[:,1,2] + dUdx[:,2,1])*vw\
+               +dUdx[:,2,2]*ww
+               
+    # Add these new fields back into the resampled dataset and write a file
+    d.InsertField(velFluc,"velFluc")
+    d.InsertField(production,"tkeProd")
+    d.WriteResultGrid("mean2.vts")
+
+    # More practially, create a plane and output the averaged QOI
     sPlane = cg.CreateCylindricalGrid(radius,height,(NX[1],NX[2],1), indexOrder=['r','z','t'])
     plane_np = dsa.WrapDataObject(sPlane)
     plane_np.PointData.append(d.ExtractPlane(velMean,0,0),"velMean")
+    plane_np.PointData.append(d.ExtractPlane(d.SpatialAverage(production,0),0,0),"tkeP")
     writer = vtk.vtkXMLStructuredGridWriter()
     writer.SetInputData(sPlane)
     writer.SetFileName("plane.vts")
     writer.Write()
-    
-
-    
-    
-    
