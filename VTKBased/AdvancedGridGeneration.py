@@ -52,7 +52,8 @@ def CreateCylindricalGrid(radius, height, nPoints, rotation = (0,0,0), \
       dX[iZ] = height/float(nPoints[iZ]-1)
   
   theta_b = np.arange(0, np.pi*2.0, dX[iT])
-  radius_b = np.linspace(0,radius,nPoints[iR])
+  #avoid singulatiry through an effective zero
+  radius_b = np.linspace(1e-12,radius,nPoints[iR])
   z_b = np.linspace(0, height, nPoints[iZ])
   
   # fill list based off ordering

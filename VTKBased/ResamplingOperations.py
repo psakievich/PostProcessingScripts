@@ -14,46 +14,10 @@ from vtk.numpy_interface import dataset_adapter as dsa
 import vtk.numpy_interface.algorithms as algs
 import numpy as np
 
-class ResampleProcessing:
+class Operations:
     '''
-    This class allows you to resample an exodus file with a vtkStructuredGrid
-    perform operations on the dataset,and save files of the data
+    Parent class for handling operations on structured grids
     '''
-    def __init__(self,exodusFileName, structuredGrid):
-        '''
-        Initialize with path to exodus file and the structured grid you wish
-        to resample over
-        '''
-        self.eReader = vtk.vtkExodusIIReader()
-        self.eReader.SetFileName(exodusFileName)
-        self.grid = structuredGrid
-    def Initialize(self,variableList=None):
-        '''
-        Read the exodus data and resample the dataset onto the specified grid
-        '''
-        self.eReader.UpdateInformation()
-        if variableList is None:
-            self.eReader.SetAllArrayStatus(vtk.vtkExodusIIReader.NODAL, True)
-        else:
-            for var in variableList:
-                self.eReader.SetNodeSetArrayStatus(var, True)
-        self.tSteps = self.eReader.GetOutputInformation(0).\
-            Get(vtk.vtkStreamingDemandDrivenPipeline.TIME_STEPS())
-        self.resample = vtk.vtkResampleWithDataSet()
-        self.resample.SetInputData(self.grid)
-        self.resample.SetSourceConnection(self.eReader.GetOutputPort())
-        self.resample.Update()
-        self.data = self.resample.GetOutput()
-        self.data_np = dsa.WrapDataObject(self.data)
-    def GetTimeSteps(self):
-        '''
-        Get a lits of times that are in the exodus dataset
-        '''
-        try:
-            return self.tSteps
-        except:
-            print "Must run Initialize first"
-            return []
     def GetKeys(self):
         '''
         Get a list of the fields that are in the exodus dataset
@@ -63,12 +27,7 @@ class ResampleProcessing:
         except:
             print "Must run Initialize first"
             return []
-    def SetTimeStep(self,time):
-        '''
-        Set the simulation to the specified time
-        '''
-        self.resample.UpdateTimeStep(time)
-        self.resample.Update()
+
     def GetField(self,name):
         '''
         Return a pointer to the name of the field specfied
@@ -154,6 +113,69 @@ class ResampleProcessing:
         elif outPlaneDirection ==2:
             newShape.append(dims[1]*dims[0])
             return array_new[:,:,index].reshape(newShape[::-1])
+
+class ResampleProcessing(Operations):
+    '''
+    This class allows you to resample an exodus file with a vtkStructuredGrid
+    perform operations on the dataset,and save files of the data
+    '''
+    def __init__(self,exodusFileName, structuredGrid):
+        '''
+        Initialize with path to exodus file and the structured grid you wish
+        to resample over
+        '''
+        self.eReader = vtk.vtkExodusIIReader()
+        self.eReader.SetFileName(exodusFileName)
+        self.grid = structuredGrid
+    def Initialize(self,variableList=None):
+        '''
+        Read the exodus data and resample the dataset onto the specified grid
+        '''
+        self.eReader.UpdateInformation()
+        if variableList is None:
+            self.eReader.SetAllArrayStatus(vtk.vtkExodusIIReader.NODAL, True)
+        else:
+            for var in variableList:
+                self.eReader.SetNodeSetArrayStatus(var, True)
+        self.tSteps = self.eReader.GetOutputInformation(0).\
+            Get(vtk.vtkStreamingDemandDrivenPipeline.TIME_STEPS())
+        self.resample = vtk.vtkResampleWithDataSet()
+        self.resample.SetInputData(self.grid)
+        self.resample.SetSourceConnection(self.eReader.GetOutputPort())
+        self.resample.Update()
+        self.data = self.resample.GetOutput()
+        self.data_np = dsa.WrapDataObject(self.data)
+    def SetTimeStep(self,time):
+        '''
+        Set the simulation to the specified time
+        '''
+        self.resample.UpdateTimeStep(time)
+        self.resample.Update()
+        self.data = self.resample.GetOutput()
+    def GetTimeSteps(self):
+        '''
+        Get a lits of times that are in the exodus dataset
+        '''
+        try:
+            return self.tSteps
+        except:
+            print "Must run Initialize first"
+            return []
+
+class StructuredGridProcessing(Operations):
+    '''
+    Calls for performing operations on data in *.vts files
+    '''
+    def __init__(self,fileName):
+        self.reader = vtk.vtkXMLStructuredGridReader()
+        self.reader.SetFileName(fileName)
+        self.reader.Update()
+        self.data = self.reader.GetOutput()
+        self.data_np = dsa.WrapDataObject(self.data)
+    def UpdateFileName(self,fileName):
+        self.reader.SetFileName(fileName)
+        self.reader.Update()
+        self.data = self.reader.GetOutput()
 
 if __name__ == "__main__":
     # set up sampling grid
