@@ -14,8 +14,8 @@ if __name__ == "__main__":
     # set up sampling grid
     radius = 0.5
     height = 1.0
-    NX = (10,10,10)
-    strucGrid = cg.CreateCylindricalGrid(radius, height, NX)
+    NX = (30,60,60)
+    strucGrid = cg.CreateCylindricalGrid(radius, height, NX, offset=1.0e-3)
     
     # perform resampling
     exodusFile = r"/gpfs1/psakiev/PVResampleDatasetBug/exodus.e"

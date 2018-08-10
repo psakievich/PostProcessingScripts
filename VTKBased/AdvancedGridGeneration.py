@@ -10,7 +10,8 @@ import vtk
 import numpy as np
 
 def CreateCylindricalGrid(radius, height, nPoints, rotation = (0,0,0), \
-                          translation=(0,0,0), indexOrder = ["t","r","z"]):
+                          translation=(0,0,0), indexOrder = ["t","r","z"],
+                          offset=1e-12):
   '''
   Create a vtkStructured grid of a cylinder
   The default is a cylinder with in the z-direction centered on the 
@@ -26,13 +27,15 @@ def CreateCylindricalGrid(radius, height, nPoints, rotation = (0,0,0), \
     translation - distance to translate the grid (tuple length 3)
     indexOrder - which order to align the indicies, t=theta, r=radial, z=vertical
                  default is ['t','r','z'] because users will likely want to average
-                 over theta first index varies fastest
+                 over theta first index varies fastest (F-ordering)
+    offset - offset from r=0 (skip r=0)
   '''
   # have to flip ordering to work with meshgrid
-  indexOrder = indexOrder[::-1]
-  nPoints = nPoints[::-1]  
+  indexOrder = indexOrder
+  nPoints = nPoints  
   # Set up points
   points = vtk.vtkPoints()
+  points.SetDataTypeToDouble()
   totalNumberOfPoints = 1
   for nX in nPoints:
     totalNumberOfPoints *= nX
@@ -53,7 +56,7 @@ def CreateCylindricalGrid(radius, height, nPoints, rotation = (0,0,0), \
   
   theta_b = np.arange(0, np.pi*2.0, dX[iT])
   #avoid singulatiry through an effective zero
-  radius_b = np.linspace(1e-12,radius,nPoints[iR])
+  radius_b = np.linspace(offset,radius,nPoints[iR])
   z_b = np.linspace(0, height, nPoints[iZ])
   
   # fill list based off ordering
@@ -63,10 +66,10 @@ def CreateCylindricalGrid(radius, height, nPoints, rotation = (0,0,0), \
   x_b[iZ]=z_b
   
   x_c = np.meshgrid(x_b[0],x_b[1],x_b[2],indexing='ij')
-  
+
   for i in range(3):
-      x_c[i]=x_c[i].flatten()
-  
+      x_c[i]=x_c[i].flatten('F')
+    
   # Assign points with transaltion to cartesian coords
   for n in range(totalNumberOfPoints):
     x = x_c[iR][n]*np.cos(x_c[iT][n])
@@ -76,8 +79,7 @@ def CreateCylindricalGrid(radius, height, nPoints, rotation = (0,0,0), \
 
   # Create grid
   grid = vtk.vtkStructuredGrid()
-  # flip ordering back to make sure dimensions of structured grid are correct
-  nPoints= nPoints[::-1]
+  # dims have to be in fortran ordering for vtk structured grid
   grid.SetDimensions(nPoints)
   grid.SetPoints(points)
   # Perform transformations

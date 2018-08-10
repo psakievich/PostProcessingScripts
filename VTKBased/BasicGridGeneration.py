@@ -26,26 +26,29 @@ def CreateCylindricalGrid(radius, height, nPoints):
   # Set up points
   points = vtk.vtkPoints()
   points.SetNumberOfPoints = nPoints
+  points.SetDataTypeToDouble()
   totalNumberOfPoints = 1
   for nX in nPoints:
     totalNumberOfPoints *= nX
   points.Allocate(totalNumberOfPoints)
   # Determine discretization
   dX = [ \
-     2.0*np.pi/float(nPoints[0]), \
+     height/float(nPoints[0]-1), \
      radius/float(nPoints[1]-1), \
-     height/float(nPoints[2]-1)]
+     2.0*np.pi/float(nPoints[2])]
   # Assign points with theta with theta as the contiguous direction
-  for nZ in range(nPoints[2]):
-    z = dX[2]*nZ
+  for nZ in range(nPoints[0]):
+    z = dX[0]*nZ
     for nR in range(nPoints[1]):
-      for nT in range(nPoints[0]):
-        theta = nT*dX[0]
+      for nT in range(nPoints[2]):
+        theta = nT*dX[2]
         x = nR*dX[1]*np.cos(theta)
         y = nR*dX[1]*np.sin(theta)
         points.InsertNextPoint(x,y,z)
   # Create grid and return it
   grid = vtk.vtkStructuredGrid()
+  # Dimms have to be listed in fortran ordering even though
+  # array is c-ordered
   grid.SetDimensions(nPoints)
   grid.SetPoints(points)
   return grid
