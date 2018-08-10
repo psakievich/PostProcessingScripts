@@ -1,31 +1,33 @@
 '''
-Example of how to create programable source in paraview
-and resample your dataset.
-In this case the key feature is going from unstructured
-to a structured grid format for post-processing
+Example on how to Resample an exouds file as specified by user
+to a cylindrical grid.
 
-Additional filters can be applied on top of this in paraview
-if desired however for point by point analysis it might be 
-simpler to just work in pure vtk.  
-
-See VTKBased directory for examples on how to do this.
+Outputs a file for each timestep in the file
 
 @author Phil Sakievich
 @email psakiev@sandia.gov
-@genesisdate 7/6/2018
+@genesisdate 8/10/2018
 '''
 
 from paraview.simple import *
 import sys, os
-#import CreateGrids as cg
+sys.path.append(os.environ["HOME"]+r"/PostProcessingScripts/GeneralPVPython")
+import GeneralIO
+import numpy as np
 
 renderView = GetActiveViewOrCreate("RenderView")
-pPath = os.environ["HOME"]+r"/PostProcessingScripts/VTKBased" 
 # stuff for createing a structured grid to resample on
 # via programmable source
 radius = 0.5
 height = 1.0
 nPoints = (20,10,10)
+pPath = os.environ["HOME"]+r"/PostProcessingScripts/VTKBased"
+
+# Additional user inputs
+oFileBaseName = os.environ["PWD"]+"/resampleTest"
+eFileBaseName = r"/gpfs1/psakiev/PVResampleDatasetBug/exodus.e"
+eNumProcs = None
+firstTimeStep = 46
 
 # create the programmable source
 grid = ProgrammableSource( \
@@ -45,10 +47,9 @@ viewGrid=Show(grid,renderView)
 viewGrid.SetRepresentationType("Surface With Edges")
 
 # unstructured data set
-exodusFilename = r"/gpfs1/psakiev/PVResampleDatasetBug/exodus.e"
-exodus = ExodusIIReader(FileName = exodusFilename)
-exodus.SelectAllVariables()
-exodus.UpdatePipeline()
+exodus = GeneralIO.ReadExodus(eFileBaseName, eNumProcs)
+tsteps = exodus.TimestepValues
+np.savetxt(oFileBaseName+"_tsteps.txt",tsteps,delimiter=",")
 
 # now do the resampling
 resample = ResampleWithDataset(\
@@ -59,3 +60,11 @@ resample = ResampleWithDataset(\
 Hide(grid)
 resampleView=Show(resample,renderView)
 resampleView.SetRepresentationType("Surface")
+
+# write out new data as timeseries
+writer = GeneralIO.WriteGeneral(XMLStructuredGridWriter,resample,oFileBaseName,returnWriter=True)
+writer.Filenamesuffix = "_%.3d"
+writer.Firsttimestep = firstTimeStep
+writer.Writetimestepsasfileseries = True
+writer.UpdatePipeline()
+

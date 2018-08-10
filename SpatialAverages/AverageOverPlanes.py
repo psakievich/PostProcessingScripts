@@ -72,11 +72,16 @@ class AverageOverPlanes:
 if __name__ == '__main__':
   import numpy as np
   from numpy.polynomial.chebyshev import chebgauss
+  import sys
 
   print "Starting program"
-
-  fileIn = "/gpfs1/spdomin/channelWithRe/wale_wedge6.e-s004"
-  fileOut = "profile.dat"
+  inputs = sys.argv
+  if len(inputs) == 3:
+    fileIn = inputs[1]
+    fileOut = inputs[2]
+  else:
+    fileIn = "/gpfs1/spdomin/channelWithRe/wale_wedge6.e-s004"
+    fileOut = "profile.dat"
   nPoints = 100
   rho = 1.0
   mu = 2.531646e-3

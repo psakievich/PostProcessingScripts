@@ -13,7 +13,7 @@ import numpy as np
 def ReadExodus(fileBase, nProcs=None):
   '''
   Read in an exodus file or decomposed file
-  
+
   Params:
     fileBase  - The base file name ("fluid.e") or the fileName
   Keywords:
@@ -32,17 +32,38 @@ def ReadExodus(fileBase, nProcs=None):
   reader.UpdatePipeline()
   return reader
 
+def WriteGeneral(writerType, source, fileOut, returnWriter=False):
+  '''
+  Write a dataset from a user supplied writer object
+
+  params:
+    writerType - paraview simple writer object
+    source - object to write from
+    fileOut - filename for the output
+  Keywords:
+    returnWriter - if true return the writer, if false
+                   just dump the file
+                   Warning - if false it will generate
+                   a new writer at each instance
+                   not really recommended for use repeatedly
+  '''
+  writer = writerType(Input = source)
+  writer.FileName = fileOut
+  if returnWriter:
+    return writer
+  writer.UpdatePipeline()
+
 def WriteMultiBlock(source, fileOut, returnWriter=False):
   '''
   Write a dataset as a multiblock
-  
+
   params:
     source - object to write from
     fileOut - filename for the output
   Keywords:
     returnWriter - if true return the writer, if false
                    just dump the file
-                   Warning - if false it will generate 
+                   Warning - if false it will generate
                    a new writer at each instance
                    not really recommended for use repeatedly
   '''
@@ -55,14 +76,14 @@ def WriteMultiBlock(source, fileOut, returnWriter=False):
 def WriteUnstructured(source, fileOut, returnWriter=False):
   '''
   Write data as an unstructured grid
-  
+
   params:
     source - object to write from
     fileOut - filename for the output
   keywords:
     returnWriter - if true return the writer, if false
                    just dump the file
-                   Warning - if false it will generate 
+                   Warning - if false it will generate
                    a new writer at each instance
                    not really recommended for use repeatedly
   '''
