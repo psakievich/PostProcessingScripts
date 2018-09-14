@@ -11,7 +11,7 @@ import numpy as np
 
 def CreateCylindricalGrid(radius, height, nPoints, rotation = (0,0,0), \
                           translation=(0,0,0), indexOrder = ["t","r","z"],
-                          offset=1e-12):
+                          offset=1e-3):
   '''
   Create a vtkStructured grid of a cylinder
   The default is a cylinder with in the z-direction centered on the 

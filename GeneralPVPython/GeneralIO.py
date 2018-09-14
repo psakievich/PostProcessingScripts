@@ -8,9 +8,10 @@ data started 5/11/18
 '''
 from paraview.simple import ExodusIIReader, XMLMultiBlockDataWriter, MergeBlocks, \
   XMLPUnstructuredGridWriter
-import numpy as np
+
 
 def ReadExodus(fileBase, nProcs=None):
+  import numpy as np
   '''
   Read in an exodus file or decomposed file
 
