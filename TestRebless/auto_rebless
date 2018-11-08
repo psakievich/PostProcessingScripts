@@ -1,0 +1,116 @@
+#!/usr/local/epd/epd-7.3-2/bin/python
+
+import os
+
+#-- INPUTS ----------------
+
+code_repo = os.getcwd()
+test_repo = '/scratch/tvoskui/tests'
+resultsDir = 'latest'
+
+#--------------------------
+
+latest = os.path.join(code_repo,'results',resultsDir)
+
+if not os.path.isdir(latest):
+  print "You are not in a code directory - Quitting now"
+  quit()
+
+dirs = os.listdir(latest)
+result_paths = []
+
+for d in dirs:
+    if d.endswith('.test'):
+        for s in os.listdir(os.path.join(latest,d)):
+            result_paths.append(os.path.join(latest,d,s))
+
+for r in result_paths:
+    print "Checking path '%s'" % r
+    diff_files = [f for f in os.listdir(r) if f.endswith('.diff')]
+
+    transfer_list = []
+
+    for df in diff_files:
+        print "  Parsing diff file:", df
+        with open(os.path.join(r,df),'r') as diff_file:
+            lines = diff_file.readlines()
+        has_diff_or_error = False
+        for line in lines[-12:]:
+            if "Files are different" in line or "error" in line.lower():
+                has_diff_or_error = True
+                print "  File reported a diff or error"
+                break
+        
+        if has_diff_or_error:
+            gold_file = None
+            new_file = None
+            for line in lines:
+                if ("FILE 1" in line or "FILE 2" in line) and ".gold" in line:
+                    gold_file = line.strip().split(':')[1].strip()
+                if ("FILE 1" in line or "FILE 2" in line) and ".gold" not in line:
+                    new_file = line.strip().split(':')[1].strip()
+
+            if gold_file is None or new_file is None:
+              raise ValueError("Unable to extract gold file and new file names from diff file")
+
+            gold_file = os.path.split(gold_file)[1]
+            new_file = os.path.split(new_file)[1]
+
+            transfer_list.append((new_file,gold_file))
+
+            print  "    Gold file: %s" % gold_file
+            print  "    New file: %s" % new_file
+
+
+    fileparts = r.split('/')
+    test_id = fileparts[-1]
+    parts = fileparts[-2].split('_')
+
+    name_parts = parts[3:]
+    name_parts[-1] = name_parts[-1].split('.')[0]
+
+    test_name = None
+    code = parts[0]
+    tests_dir = os.path.join(test_repo,code+"_rtest",code)
+
+    if len(name_parts) % 2 != 0:
+      subParts = parts[3:]
+
+      for i in range(1,len(subParts)):
+        tmp = "_".join(subParts[:i])
+        if os.path.isdir(os.path.join(tests_dir,tmp)):
+          test_name = tmp
+          break
+
+      if test_name is None:
+        raise ValueError("Unable to parse test name from %s" % "_".join(parts[3:]))
+
+    else:
+      n = len(name_parts)/2
+      test_name = "_".join(name_parts[:n])
+
+
+    tests = os.listdir(tests_dir)
+
+    if test_name not in tests:
+        raise ValueError("Unable to locate test "+test_name+" in tests repo")
+
+    test_dir = None
+
+    if os.path.isdir(os.path.join(tests_dir,test_name,test_id)):
+      test_dir = os.path.join(tests_dir,test_name,test_id)
+
+    elif os.path.isdir(os.path.join(tests_dir,test_name)):
+      test_dir = os.path.join(tests_dir,test_name)
+
+    if test_dir is None:
+        raise ValueError("Unable to identify proper test sub-directory for "+test_name)
+
+
+    for f in transfer_list:
+        print "  Copying file %s to %s" % (f[0], f[1])
+        copy_cmd = 'cp '+os.path.join(r,f[0])+' '+os.path.join(test_dir,f[1])
+        os.system(copy_cmd)
+
+
+

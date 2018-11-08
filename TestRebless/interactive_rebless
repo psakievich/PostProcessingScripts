@@ -1,0 +1,179 @@
+#!/usr/local/epd/epd-7.3-2/bin/python
+
+import os
+
+#-- INPUTS ----------------
+
+code_repo = os.getcwd()
+test_repo = '/scratch/tvoskui/tests'
+resultsDir = 'latest'
+
+#--------------------------
+
+RED="""\033[0;31m"""
+GREEN="""\033[0;32m"""
+NC="""\033[0m"""
+
+latest = os.path.join(code_repo,'results',resultsDir)
+
+if not os.path.isdir(latest):
+  print "You are not in a code directory - Quitting now"
+  quit()
+
+dirs = os.listdir(latest)
+result_paths = []
+
+for d in dirs:
+    if d.endswith('.test'):
+        for s in os.listdir(os.path.join(latest,d)):
+            result_paths.append(os.path.join(latest,d,s))
+
+for ri,r in enumerate(result_paths):
+    print "*"*100
+    print "* EXAMINING TEST %d OF %d" % (ri+1, len(result_paths))
+    print "*"*100
+    print "Checking path '%s'" % r
+    diff_files = [f for f in os.listdir(r) if f.endswith('.diff')]
+
+    transfer_list = []
+
+    for df in diff_files:
+        print "  Parsing diff file:", df
+        with open(os.path.join(r,df),'r') as diff_file:
+            lines = diff_file.readlines()
+        has_diff_or_error = False
+        for line in lines[-12:]:
+            if "Files are different" in line or "error" in line.lower():
+                has_diff_or_error = True
+                print "  File reported a diff or error"
+                break
+        
+        if has_diff_or_error:
+            gold_file = None
+            new_file = None
+            for line in lines:
+                if ("FILE 1" in line or "FILE 2" in line) and ".gold" in line:
+                    gold_file = line.strip().split(':')[1].strip()
+                if ("FILE 1" in line or "FILE 2" in line) and ".gold" not in line:
+                    new_file = line.strip().split(':')[1].strip()
+
+            if gold_file is None or new_file is None:
+              raise ValueError("Unable to extract gold file and new file names from diff file")
+
+            gold_file = os.path.split(gold_file)[1]
+            new_file = os.path.split(new_file)[1]
+
+            transfer_list.append((new_file,gold_file))
+
+            print  "    Gold file: %s" % gold_file
+            print  "    New file: %s" % new_file
+            printing = False
+            for line in lines:
+              if "Time step 1" in line:
+                printing = True
+
+              if printing:
+                raw = line.strip()
+                notes = ""
+                if "rel diff" in raw:
+                  rp = raw.split('rel diff:')[1].split()
+                  try:
+                    val1 = float(rp[0])
+                    val2 = float(rp[2])
+                    avgVal = max(1e-16,0.5*(abs(val1)+abs(val2)))
+                    diff = abs(val1-val2)
+                    if diff < 1e-4 or diff/avgVal < 1e-2:
+                      notes = ""
+                    else:
+                      notes = RED + " <- CHECK THIS" + NC
+                  except (ValueError, IndexError):
+                    notes = ""
+                print raw, notes
+
+
+    gettingInput = True
+
+    ans = None
+
+    print "The test diffed in %d files" % len(transfer_list)
+    print " Enter 'y' or 'n' to rebless the test or not"
+    print " Enter 'i #' or just 'i' to inspect one of the diffs in paraview (e.g. 'i 1' or 'i 0')"
+    print "  Default # is 0"
+
+    while gettingInput:
+      ans = raw_input("rebless test? (y/n/i#): ")
+      if ans == "y" or ans == "n":
+        gettingInput = False
+
+      elif "i" in ans:
+        idx = 0
+        if len(ans) > 1:
+          idx = int(ans[1:].strip())
+        fp = transfer_list[idx]
+        with open('data.txt','w') as fnf:
+          fnf.write(os.path.join(r,fp[0]) + "\n1\n")
+          fnf.write(os.path.join(r,fp[1]) + "\n1\n")
+        os.system('paraview --script=/ascldap/users/tvoskui/.local/bin/file_comp.py > /dev/null')
+
+
+    if ans == "n":
+      continue
+
+    fileparts = r.split('/')
+    test_id = fileparts[-1]
+    parts = fileparts[-2].split('_')
+
+    name_parts = parts[3:]
+    name_parts[-1] = name_parts[-1].split('.')[0]
+
+    test_name = None
+    code = parts[0]
+    tests_dir = os.path.join(test_repo,code+"_rtest",code)
+
+    if len(name_parts) % 2 != 0:
+      subParts = parts[3:]
+
+      for i in range(1,len(subParts)):
+        tmp = "_".join(subParts[:i])
+        if os.path.isdir(os.path.join(tests_dir,tmp)):
+          test_name = tmp
+          break
+
+      if test_name is None:
+        raise ValueError("Unable to parse test name from %s" % "_".join(parts[3:]))
+
+    else:
+      n = len(name_parts)/2
+      test_name = "_".join(name_parts[:n])
+
+
+    tests = os.listdir(tests_dir)
+
+    if test_name not in tests:
+        raise ValueError("Unable to locate test "+test_name+" in tests repo")
+
+    test_dir = None
+
+    if os.path.isdir(os.path.join(tests_dir,test_name,test_id)):
+      test_dir = os.path.join(tests_dir,test_name,test_id)
+
+    elif os.path.isdir(os.path.join(tests_dir,test_name)):
+      test_dir = os.path.join(tests_dir,test_name)
+
+    if test_dir is None:
+        raise ValueError("Unable to identify proper test sub-directory for "+test_name)
+
+
+    for f in transfer_list:
+        print "  Copying file %s to %s" % (f[0], f[1])
+        copy_cmd = 'cp '+os.path.join(r,f[0])+' '+os.path.join(test_dir,f[1])
+        os.system(copy_cmd)
+
+    del_cmd = 'rm -rf %s' % r
+    os.system(del_cmd)
+    parts = os.path.split(r)
+    if len(os.listdir(parts[0])) == 0 and parts[0] != '/scratch/tvoskui/code/results/latest':
+      os.system('rm -rf %s' % parts[0])
+
+
+
