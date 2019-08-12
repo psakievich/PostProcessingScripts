@@ -23,7 +23,7 @@ date: 8/2/2019
 ###############################################
 """
 import os
-pythonPathAppend =  os.environ["HOME"]+r'/soft/PostProcessingScripts/VTKBased'
+pythonPathAppend =  ""#os.environ["HOME"]+r'/soft/PostProcessingScripts/VTKBased'
 samplingDimensions = [40, 10, 10]
 sampleSpacing = [0.25,1,1]
 sampleOrigin = [1.0,0,0]
@@ -43,14 +43,44 @@ dataSet = GetActiveSource()
 sampleGrid = ProgrammableSource()
 sampleGrid.OutputDataSetType = 'vtkImageData'
 sampleGrid.PythonPath = "\"{path}\"".format(path=pythonPathAppend)
-sampleGrid.ScriptRequestInformation = """import DomainDecomposition
+sampleGrid.ScriptRequestInformation = """
 executive = self.GetExecutive()
 dims = {sampleDims}
-DomainDecomposition.StandardRequestInformation(executive, dims)
+def StandardRequestInformation(executive, globalDims):
+    outInfo = executive.GetOutputInformation(0)
+    outInfo.Set(executive.WHOLE_EXTENT(), 0, globalDims[0]-1,
+            0, globalDims[1]-1,
+            0, globalDims[2]-1)
+    outInfo.Set(vtk.vtkAlgorithm.CAN_PRODUCE_SUB_EXTENT(), 1)
+StandardRequestInformation(executive, dims)
 """.format(sampleDims=samplingDimensions)
-sampleGrid.Script = """import DomainDecomposition
+sampleGrid.Script = """
+import numpy as np
+def GetSubExtent(executive, splitPath):
+    controller = vtk.vtkMultiProcessController.GetGlobalController()
+    if not controller:
+        rank = 0
+        nranks = 1
+    else:
+        rank = controller.GetLocalProcessId()
+        nranks = controller.GetNumberOfProcesses()
+    
+    outInfo = executive.GetOutputInformation(0)
+    
+    wholeExtent = np.array(outInfo.Get(executive.WHOLE_EXTENT()))
+    globDims = wholeExtent[1::2]-wholeExtent[0::2]+1
+    extCont = vtk.vtkExtentTranslator()
+    extCont.SetSplitPath(4, splitPath)
+    extCont.SetWholeExtent(outInfo.Get(executive.WHOLE_EXTENT()))
+    extCont.SetNumberOfPieces(nranks)
+    extCont.SetPiece(rank)
+    extCont.PieceToExtent()
+    outInfo.Set(executive.UPDATE_EXTENT(),
+            extCont.GetExtent(), 6)
+    
+    return extCont.GetExtent()
 executive = self.GetExecutive()
-extent = DomainDecomposition.GetSubExtent(executive,{splitPath})
+extent = GetSubExtent(executive,{splitPath})
 output.SetExtent(*extent)
 output.SetSpacing(*{spacing})
 output.SetOrigin(*{origin})""".format(splitPath = [(averagingDirection+1)%3],
@@ -65,7 +95,6 @@ averageOperator = ProgrammableFilter(Input = resample)
 averageOperator.PythonPath = sampleGrid.PythonPath
 averageOperator.OutputDataSetType = 'vtkImageData'
 averageOperator.RequestInformationScript = """import numpy as np
-import DomainDecomposition as DD
 
 executive = self.GetExecutive()
 outInfo = executive.GetOutputInformation(0)
@@ -85,16 +114,44 @@ if {c2p}:
         raise Exception("averageAxis must be 0,1 or 2")
 
 globDims = inExtent[1::2]+1
-DD.StandardRequestInformation(executive, globDims)""".format(aa = averagingDirection,
+def StandardRequestInformation(executive, globalDims):
+    outInfo = executive.GetOutputInformation(0)
+    outInfo.Set(executive.WHOLE_EXTENT(), 0, globalDims[0]-1,
+            0, globalDims[1]-1,
+            0, globalDims[2]-1)
+    outInfo.Set(vtk.vtkAlgorithm.CAN_PRODUCE_SUB_EXTENT(), 1)
+StandardRequestInformation(executive, globDims)""".format(aa = averagingDirection,
         c2p = collapseToPlane)
-averageOperator.RequestUpdateExtentScript = """ pass """
+averageOperator.RequestUpdateExtentScript = """pass"""
 averageOperator.Script = """import vtk
 import numpy as np
 from vtk.numpy_interface import dataset_adapter as dsa
-import DomainDecomposition as DD
 
 executive = self.GetExecutive()
-my_extent = DD.GetSubExtent(executive, [(self.averageAxis+1)%3])
+def GetSubExtent(executive, splitPath):
+    controller = vtk.vtkMultiProcessController.GetGlobalController()
+    if not controller:
+        rank = 0
+        nranks = 1
+    else:
+        rank = controller.GetLocalProcessId()
+        nranks = controller.GetNumberOfProcesses()
+    
+    outInfo = executive.GetOutputInformation(0)
+    
+    wholeExtent = np.array(outInfo.Get(executive.WHOLE_EXTENT()))
+    globDims = wholeExtent[1::2]-wholeExtent[0::2]+1
+    extCont = vtk.vtkExtentTranslator()
+    extCont.SetSplitPath(4, splitPath)
+    extCont.SetWholeExtent(outInfo.Get(executive.WHOLE_EXTENT()))
+    extCont.SetNumberOfPieces(nranks)
+    extCont.SetPiece(rank)
+    extCont.PieceToExtent()
+    outInfo.Set(executive.UPDATE_EXTENT(),
+            extCont.GetExtent(), 6)
+    
+    return extCont.GetExtent()
+my_extent = GetSubExtent(executive, [(self.averageAxis+1)%3])
 
 # Do operations on the grid
 outputGrid = self.GetOutput()
