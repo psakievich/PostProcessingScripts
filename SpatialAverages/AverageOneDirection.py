@@ -23,11 +23,9 @@ date: 8/2/2019
 ###############################################
 """
 import os
-pythonPathAppend =  ""#os.environ["HOME"]+r'/soft/PostProcessingScripts/VTKBased'
-samplingDimensions = [40, 10, 10]
-sampleSpacing = [0.25,1,1]
-sampleOrigin = [1.0,0,0]
-averagingDirection = 1
+import numpy as np
+samplingDimensions = np.array([1001, 1001, 101])
+averagingDirection = 2
 collapseToPlane = False
 
 """
@@ -37,8 +35,13 @@ collapseToPlane = False
 """
 
 from paraview.simple import *
+pythonPathAppend =  ""#os.environ["HOME"]+r'/soft/PostProcessingScripts/VTKBased'
 
 dataSet = GetActiveSource()
+bounds  = np.array(dataSet.GetDataInformation().GetBounds())
+deltas = bounds[1::2]-bounds[0::2]
+sampleSpacing = deltas/(samplingDimensions-1)
+sampleOrigin = np.array([0.0,0,0])
 
 sampleGrid = ProgrammableSource()
 sampleGrid.OutputDataSetType = 'vtkImageData'
@@ -53,7 +56,7 @@ def StandardRequestInformation(executive, globalDims):
             0, globalDims[2]-1)
     outInfo.Set(vtk.vtkAlgorithm.CAN_PRODUCE_SUB_EXTENT(), 1)
 StandardRequestInformation(executive, dims)
-""".format(sampleDims=samplingDimensions)
+""".format(sampleDims=np.array2string(samplingDimensions, separator=','))
 sampleGrid.Script = """
 import numpy as np
 def GetSubExtent(executive, splitPath):
@@ -84,7 +87,8 @@ extent = GetSubExtent(executive,{splitPath})
 output.SetExtent(*extent)
 output.SetSpacing(*{spacing})
 output.SetOrigin(*{origin})""".format(splitPath = [(averagingDirection+1)%3],
-        spacing = sampleSpacing, origin = sampleOrigin)
+        spacing = np.array2string(sampleSpacing, separator=','), 
+        origin = np.array2string(sampleOrigin, separator=','))
 
 resample = ResampleWithDataset(Input = dataSet, Source = sampleGrid)
 resample.CellLocator = 'Static Cell Locator'
