@@ -9,6 +9,11 @@ This script assumes your data set can be decomposed using
 slabs in the (d+1)%3 direction where d is the dimension
 you will be averaging across.
 
+!!!If your sampling in the parallel decomposition direction
+is less than the number of processors then paraview will
+revert to pencil/block decomposition and your results will
+be incorrect.!!!!
+
 If the dimensions are too large then this could be modified
 to use pencil decomposition, but has not been tested
 
@@ -73,7 +78,7 @@ def GetSubExtent(executive, splitPath):
     wholeExtent = np.array(outInfo.Get(executive.WHOLE_EXTENT()))
     globDims = wholeExtent[1::2]-wholeExtent[0::2]+1
     extCont = vtk.vtkExtentTranslator()
-    extCont.SetSplitPath(4, splitPath)
+    extCont.SetSplitPath(len(splitPath), splitPath)
     extCont.SetWholeExtent(outInfo.Get(executive.WHOLE_EXTENT()))
     extCont.SetNumberOfPieces(nranks)
     extCont.SetPiece(rank)
@@ -146,7 +151,7 @@ def GetSubExtent(executive, splitPath):
     wholeExtent = np.array(outInfo.Get(executive.WHOLE_EXTENT()))
     globDims = wholeExtent[1::2]-wholeExtent[0::2]+1
     extCont = vtk.vtkExtentTranslator()
-    extCont.SetSplitPath(4, splitPath)
+    extCont.SetSplitPath(len(splitPath), splitPath)
     extCont.SetWholeExtent(outInfo.Get(executive.WHOLE_EXTENT()))
     extCont.SetNumberOfPieces(nranks)
     extCont.SetPiece(rank)
