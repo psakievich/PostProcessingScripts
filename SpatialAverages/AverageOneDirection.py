@@ -200,7 +200,35 @@ for key in inputMath.PointData.keys():
             newArray = b* newArray
         newArray = dsa.numpyTovtkDataArray(newArray.flatten(order='A'), array_type=10)
     newArray.SetName(key)
-    outputMath.PointData.AddArray(newArray)""".format(c2p=collapseToPlane)
+    outputMath.PointData.AddArray(newArray)
+for key in inputMath.CellData.keys():
+    if key.find('vtk') is not -1:
+        continue
+    array = inputMath.CellData[key]
+    orgShape = array.shape
+    reshape = arraySize
+    if len(array.shape) == 2:
+        dArray = [d for d in spatialDims[::-1]]
+        dArray.append(array.shape[1])
+        array = array.reshape(dArray, order='C')
+        newArray = np.mean(array, axis=2-self.averageAxis,keepdims=True)
+        if not {c2p}:
+            b = np.ones(dArray)
+            newArray = b*newArray
+            reshape = orgShape[0]
+        newArray = dsa.numpyTovtkDataArray(
+            newArray.ravel(order='A').reshape(
+            reshape,orgShape[1]), array_type=10)
+    if len(array.shape) == 1:
+        array = array.reshape(spatialDims[::-1])
+        newArray = np.mean(array,axis=2-self.averageAxis,keepdims=True)
+        if not {c2p}:
+            b = np.ones(spatialDims[::-1])
+            newArray = b* newArray
+        newArray = dsa.numpyTovtkDataArray(newArray.flatten(order='A'), array_type=10)
+    newArray.SetName(key)
+    outputMath.CellData.AddArray(newArray)
+""".format(c2p=collapseToPlane)
 
 HideAll()
 Show(averageOperator)
