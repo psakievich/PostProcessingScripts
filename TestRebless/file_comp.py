@@ -59,8 +59,14 @@ renderResult = GetActiveViewOrCreate('RenderView')
 Show(resultReader,renderResult)
 
 layout = GetLayout()
-layout.SplitVertical(2,0.5)
-renderGold = CreateView('RenderView')
+pvMajor = paraview.servermanager.vtkSMProxyManager.GetVersionMajor()
+pvMinor = paraview.servermanager.vtkSMProxyManager.GetVersionMinor()
+if pvMajor<=5 and pvMinor <= 6:
+  layout.SplitVertical(2,0.5)
+else
+  view = GetActiveView()
+  layout.SplitViewVertical(view)
 
+renderGold = CreateView('RenderView')
 layout.AssignView(2,renderGold)
 Show(goldReader,renderGold)
